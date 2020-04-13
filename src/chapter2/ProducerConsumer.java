@@ -2,18 +2,23 @@ package chapter2;
 
 public class ProducerConsumer {
 
+    private static Object lock = new Object();
+
     private static int[] buffer = new int[10];
 
     private static int count;
 
     static class Producer {
 
-        public void produce() {
-            while (isFull(buffer)) {
+        public void produce() throws InterruptedException {
+            synchronized (lock) {
+                while (isFull(buffer)) {
+                    lock.wait();
+                }
 
+                buffer[count++] = 1;
+                lock.notify();
             }
-
-            buffer[count++] = 1;
         }
 
     }
@@ -21,10 +26,16 @@ public class ProducerConsumer {
 
     static class Consumer {
 
-        public void consume() {
-            while (isEmpty(buffer)) {}
+        public void consume() throws InterruptedException {
+            synchronized (lock) {
+                while (isEmpty(buffer)) {
+                    lock.wait();
+                }
 
-            buffer[count--] = 0;
+                buffer[count--] = 0;
+                lock.notify();
+            }
+
         }
 
 
@@ -50,14 +61,22 @@ public class ProducerConsumer {
 
         Runnable produce = () -> {
             for (int i = 0; i < 50; i++) {
-                producer.produce();
+                try {
+                    producer.produce();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
             System.out.println("Done producing");
         };
 
         Runnable consume = () -> {
             for (int i = 0; i < 50; i++) {
-                consumer.consume();
+                try {
+                    consumer.consume();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
             System.out.println("Done consuming");
         };
